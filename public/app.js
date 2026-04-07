@@ -31,7 +31,7 @@ async function atualizarCookie() {
   }
 
   try {
-    const res = await fetch('http://localhost:3000/api/proxy/config', {
+    const res = await fetch('/api/proxy/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cookieString })
@@ -137,13 +137,13 @@ async function buscarDados() {
 
   try {
     // Ping/Session keep-alive opcional rodando no fundo
-    fetch('http://localhost:3000/api/proxy/session', {
+    fetch('/api/proxy/session', {
       method: 'POST'
     }).catch(() => { });
 
     // Busca dados via Proxy Local, burlando o CORS elegantemente (sem token via JSON pois está hardcoded)
     // Formata datas para o Movidesk (DD/MM/YYYY) se o servidor exigir, embora o proxy receba YYYY-MM-DD
-    const res = await fetch('http://localhost:3000/api/proxy/report', {
+    const res = await fetch('/api/proxy/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ startDate, endDate })
@@ -304,7 +304,7 @@ document.getElementById("btn-salvar").addEventListener("click", async () => {
 
   try {
     // 1. Puxa a Action completa deste Ticket via JsonGetActions proxy
-    const resGet = await fetch(`http://localhost:3000/api/proxy/ticket/${targetRecord.ticketId}`);
+    const resGet = await fetch(`/api/proxy/ticket/${targetRecord.ticketId}`);
     if (!resGet.ok) throw new Error("Erro de comunicação com JsonGetActions");
     const actionsDesc = await resGet.json();
 
@@ -345,7 +345,7 @@ document.getElementById("btn-salvar").addEventListener("click", async () => {
     targetApt.WorkTimeConsumptionHoursTimeSpan = targetApt.WorkTime;
 
     // 4. Envia para o NodeJS forjar o Form Post complexo
-    const rSave = await fetch('http://localhost:3000/api/proxy/action/save', {
+    const rSave = await fetch('/api/proxy/action/save', {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

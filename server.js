@@ -206,9 +206,15 @@ app.post('/api/proxy/action/save', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`\n======================================================`);
-  console.log(`✅ App Movidesk PRE-CONFIGURADO iniciado na porta ${PORT}!`);
-  console.log(`🌐 Acesse: http://localhost:${PORT}`);
-  console.log(`======================================================\n`);
-});
+// Apenas inicia o servidor na porta se não estiver rodando na Vercel (onde NODE_ENV é production)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`\n======================================================`);
+    console.log(`✅ App Movidesk PRE-CONFIGURADO iniciado na porta ${PORT}!`);
+    console.log(`🌐 Acesse: http://localhost:${PORT}`);
+    console.log(`======================================================\n`);
+  });
+}
+
+// Exporta o app para que a Vercel consiga utilizá-lo como Serverless Function
+module.exports = app;
