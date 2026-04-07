@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Movidesk</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  body {
+    font-family: Arial;
+    background: #0f0f0f;
+    color: #fff;
+    padding: 20px;
+  }
+
+  input, button {
+    padding: 10px;
+    width: 100%;
+    margin-top: 10px;
+    border-radius: 8px;
+    border: none;
+  }
+
+  input {
+    background: #1e1e1e;
+    color: #fff;
+  }
+
+  button {
+    background: orange;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .card {
+    margin-top: 20px;
+    padding: 20px;
+    background: #1a1a1a;
+    border-radius: 10px;
+  }
+</style>
+</head>
+
+<body>
+
+<h2>📊 Dashboard de Atendimento</h2>
+
+<label>Token / String de Autenticação:</label>
+<input id="token" type="text" placeholder="Cole o seu Bearer ou Cookie inteiro aqui...">
+<button onclick="salvarToken()" style="background: #3366cc; margin-bottom: 20px;">Salvar Token</button>
+
+<label>Data Início:</label>
+<input id="startDate" type="date" value="2026-03-30">
+
+<label>Data Fim:</label>
+<input id="endDate" type="date" value="2026-03-30">
+
+<button onclick="buscarDados()">Buscar Relatório</button>
+
+<button onclick="buscarDados()">Atualizar</button>
+
+<div class="card">
+  <h3>Total trabalhado</h3>
+  <p id="total">--</p>
+</div>
+
+<div class="card" id="problemas-card" style="display: none; background: #331f00; border: 1px solid #cc7700;">
+  <h3>⚠️ Avisos (Sobreposições / Buracos)</h3>
+  <ul id="lista-problemas" style="color: #ffcc66; padding-left: 20px; line-height: 1.5;"></ul>
+</div>
+
+<canvas id="grafico"></canvas>
+
+<script>
+const TOKEN_KEY = 'movidesk_token';
+
+let token = localStorage.getItem(TOKEN_KEY);
+if (!token) {
+  token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5YjlmMjAxZi0wMzBjLTQ1MTctOWUwYi1mMjVhZWM1NDgyZDEiLCJ1ZHQiOiJleUpKWkNJNk1URTRNemczTkRnekxDSlVaVzVoYm5SSlpDSTZNakE1TVRNc0lsQmxjbk52YmxSNWNHVWlPakVzSWxCeWIyWnBiR1ZVZVhCbElqb3pMQ0pWYVcxbFdtOXVaVWxrSWpwdWRXeHNMQ0pWYVcxbFdtOXVaVWxrSWpwdWRXeHNMQ0pEY21WaGRHVmtSR0YwWlNJNklqSXdNalV0TURndE1qbFVNVFE2TlRRNk1UVXVOVGt6TnprM055SXNJa052WkdWU1pXWmxjbVZ1WTJVaU9pSXhNVFExTmpVeU16UTNJbjA9IiwiY3RyIjoicHQtQlIiLCJoc3QiOiJsZWN0b3J0ZWMubW92aWRlc2suY29tIiwidHppIjoiQW1lcmljYS9TYW9fUGF1bG8iLCJpY3IiOiJGYWxzZSIsImN3dCI6IiIsIm5iZiI6MTc3NDk1NDcwNiwiZXhwIjoxNzc0OTg3MTA2LCJpYXQiOjE3NzQ5NTQ3MDYsImlzcyI6Ik1vdmlkZXNrIiwiYXVkIjoibW92aWRlc2sifQ.XNg6ihCqBx8jtY3STnaj2eTgORFiRDcgMKo3RrYdn5E';
+  localStorage.setItem(TOKEN_KEY, token);
+}
+document.getElementById("token").value = token;
+
+function salvarToken() {
+  let t = document.getElementById("token").value;
+  
+  // Se o usuário colou a string inteira contendo "Bearer=", extrai só o JWT
+  if (t.includes("Bearer=")) {
+    const regex = /Bearer=([a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+)/;
+    const match = t.match(regex);
+    if (match && match[1]) {
+      t = match[1];
+    }
+  } else if (t.startsWith("Bearer ")) {
+    t = t.replace("Bearer ", "");
+  }
+  
+  localStorage.setItem(TOKEN_KEY, t);
+  document.getElementById("token").value = t; // Atualiza o input para mostrar só o token
+  alert('Token atualizado e salvo com sucesso!');
+}
+function timeToMinutes(t) {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function minutesToHHMM(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h}h ${m}min`;
+}
+
+function analisarRegistros(registros) {
+  const problemas = [];
+  const registrosValidos = [];
+
+  // 🧱 helper: converter HH:mm → minutos
+  function toMin(time) {
+    if (!time || typeof time !== "string") return null;
+
+    const [h, m] = time.split(":").map(Number);
+    if (isNaN(h) || isNaN(m)) return null;
+
+    return h * 60 + m;
+  }
+
+  // 🧱 normalização + validação
+  registros.forEach((r, index) => {
+    const inicioMin = toMin(r.inicio);
+    const fimMin = toMin(r.fim);
+
+    // ❌ inválido
+    if (inicioMin === null || fimMin === null) {
+      problemas.push({
+        tipo: "invalido",
+        index,
+        msg: `❌ Registro inválido em índice ${index}`
+      });
+      return;
+    }
+
+    // ❌ fim antes do início
+    if (fimMin < inicioMin) {
+      problemas.push({
+        tipo: "duracao_negativa",
+        index,
+        msg: `❌ Fim menor que início (${r.inicio} - ${r.fim})`
+      });
+      return;
+    }
+
+    registrosValidos.push({
+      ...r,
+      inicioMin,
+      fimMin
+    });
+  });
+
+  // 🔽 ordenar corretamente por tempo
+  registrosValidos.sort((a, b) => a.inicioMin - b.inicioMin);
+
+  // 🔁 análise sequencial
+  for (let i = 0; i < registrosValidos.length; i++) {
+    const atual = registrosValidos[i];
+    const prox = registrosValidos[i + 1];
+
+    // 🧱 duração zero (suspeito)
+    if (atual.inicioMin === atual.fimMin) {
+      problemas.push({
+        tipo: "duracao_zero",
+        index: i,
+        msg: `⚠️ Duração zerada em ${atual.inicio}-${atual.fim}`
+      });
+    }
+
+    if (!prox) break;
+
+    // ❌ SOBREPOSIÇÃO
+    if (atual.fimMin > prox.inicioMin) {
+      problemas.push({
+        tipo: "sobreposicao",
+        index: i,
+        msg: `❌ Sobreposição: ${atual.inicio}-${atual.fim} conflita com ${prox.inicio}-${prox.fim}`,
+        conflito: {
+          atual,
+          proximo: prox
+        }
+      });
+    }
+
+    // ⚠️ GAP (buraco)
+    if (atual.fimMin < prox.inicioMin) {
+      const gap = prox.inicioMin - atual.fimMin;
+
+      problemas.push({
+        tipo: "gap",
+        index: i,
+        minutos: gap,
+        msg: `⚠️ Gap de ${gap} min entre ${atual.fim} e ${prox.inicio}`
+      });
+    }
+
+    // ⚠️ DUPLICIDADE (mesmo horário)
+    if (
+      atual.inicioMin === prox.inicioMin &&
+      atual.fimMin === prox.fimMin
+    ) {
+      problemas.push({
+        tipo: "duplicado",
+        index: i,
+        msg: `🔁 Registros duplicados em ${atual.inicio}-${atual.fim}`
+      });
+    }
+  }
+
+  // 📊 resumo útil
+  const resumo = {
+    totalRegistros: registros.length,
+    validos: registrosValidos.length,
+    problemas: problemas.length,
+    totalGapMin: problemas
+      .filter(p => p.tipo === "gap")
+      .reduce((acc, p) => acc + p.minutos, 0)
+  };
+
+  return {
+    problemas,
+    registrosOrdenados: registrosValidos,
+    resumo
+  };
+}
+
+async function buscarDados() {
+  const token = localStorage.getItem(TOKEN_KEY);
+
+  const url = "https://lectortec.movidesk.com/Report/WorkTimeResultToJsonAsync?StartDate=2026-03-30&EndDate=2026-03-30&TicketType=&ShowOnlyWithServiceReport=false&Agents[0].Id=118387483&Agents[0].ToDelete=false";
+
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        "accept": "application/json, text/plain, */*",
+        "authorization": "Bearer " + token,
+        "sec-ch-ua": "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Google Chrome\";v=\"146\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"Windows\""
+      },
+      mode: "cors",
+      credentials: "include"
+    });
+
+    const json = await res.json();
+
+    // 🔥 adapta aqui conforme estrutura real
+    const registros = json;
+
+    let totalMin = 0;
+    const porCategoria = {};
+
+    registros.forEach(r => {
+      if (!r.inicio || !r.fim) return;
+
+      const inicio = timeToMinutes(r.inicio);
+      const fim = timeToMinutes(r.fim);
+      const duracao = fim - inicio;
+
+      totalMin += duracao;
+
+      const cat = r.categoria || "Outros";
+      porCategoria[cat] = (porCategoria[cat] || 0) + duracao;
+    });
+
+    document.getElementById("total").innerText = minutesToHHMM(totalMin);
+
+    // analisar problemas (gaps / sobreposicoes)
+    const analise = analisarRegistros(registros);
+    const { problemas, resumo } = analise;
+    const listaHtml = document.getElementById("lista-problemas");
+    const cardProblemas = document.getElementById("problemas-card");
+    
+    listaHtml.innerHTML = "";
+    if (problemas.length > 0) {
+      cardProblemas.style.display = "block";
+
+      const resumoLi = document.createElement("li");
+      resumoLi.style.fontWeight = "bold";
+      resumoLi.style.listStyleType = "none";
+      resumoLi.style.marginBottom = "10px";
+      resumoLi.style.color = "#fff";
+      resumoLi.style.marginLeft = "-20px";
+      resumoLi.innerText = `🔍 Resumo: ${resumo.validos}/${resumo.totalRegistros} válidos | ${resumo.totalGapMin} min livres (buracos)`;
+      listaHtml.appendChild(resumoLi);
+
+      problemas.forEach(p => {
+        const li = document.createElement("li");
+        li.innerText = p.msg;
+        listaHtml.appendChild(li);
+      });
+    } else {
+      cardProblemas.style.display = "none";
+    }
+
+    // gráfico
+    const labels = Object.keys(porCategoria);
+    const data = Object.values(porCategoria);
+
+    new Chart(document.getElementById("grafico"), {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Tempo por categoria (min)",
+          data: data
+        }]
+      }
+    });
+
+  } catch (e) {
+    alert("Erro ao buscar dados. Confere o token.");
+    console.error(e);
+  }
+}
+</script>
+
+</body>
+</html>

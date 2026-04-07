@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movidesk Insights</title>
+    <!-- Fonte Inter do Google Fonts (Premium Look) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Chart.js para o Gráfico -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="glass-container main-wrapper">
+        <header>
+            <div class="header-titles">
+                <h1>Movidesk <span>Insights</span></h1>
+                <p>Análise Avançada de Apontamentos</p>
+            </div>
+        </header>
+
+        <section class="controls glass-panel">
+            <div class="date-group">
+                <div class="input-col">
+                    <label>Data Início</label>
+                    <input id="startDate" type="date">
+                </div>
+                <div class="input-col">
+                    <label>Data Fim</label>
+                    <input id="endDate" type="date">
+                </div>
+            </div>
+            <div class="action-group">
+                <button id="btn-fetch" class="btn-accent">🚀 Buscar Relatório</button>
+            </div>
+        </section>
+
+        <!-- Indicador de Status/Loading -->
+        <div id="loader" class="hidden">
+            <div class="spinner"></div>
+            <p>Conectando ao proxy seguro do Movidesk...</p>
+        </div>
+
+        <!-- Resultados -->
+        <main id="results-area" class="hidden">
+            <div class="stats-row">
+                <div class="stat-card glass-panel">
+                    <h3>Total Trabalhado</h3>
+                    <p id="total-time" class="highlight">--</p>
+                </div>
+                <!-- O painel de problemas agora fica lado a lado ou em destaque -->
+                <div id="problemas-card" class="stat-card glass-panel alert-panel hidden">
+                    <div class="alert-header">
+                        <span class="icon">⚠️</span>
+                        <h3>Avisos Encontrados</h3>
+                    </div>
+                    <ul id="lista-problemas"></ul>
+                </div>
+            </div>
+
+            <div class="chart-container glass-panel">
+                <h3>Distribuição por Categoria</h3>
+                <canvas id="grafico"></canvas>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal de Edição (Glassmorphism) -->
+    <div id="edit-modal" class="modal-overlay hidden">
+        <div class="modal-box glass-panel">
+            <h3 id="modal-title">🔨 Corrigir Apontamento</h3>
+            <p>Ticket #<span id="modal-ticket"></span> | Ação <span id="modal-action"></span></p>
+            
+            <div class="modal-inputs date-group">
+                <div class="input-col">
+                    <label>Horário Inicial</label>
+                    <input id="modal-inicio" type="time">
+                </div>
+                <div class="input-col">
+                    <label>Horário Final</label>
+                    <input id="modal-fim" type="time">
+                </div>
+            </div>
+
+            <div class="modal-actions action-group">
+                <button id="btn-cancelar" class="btn-cancel">Cancelar</button>
+                <button id="btn-salvar" class="btn-primary">Salvar no Movidesk</button>
+            </div>
+            <div id="modal-loading" class="hidden" style="margin-top:10px; font-size:12px; color:#fff;">Aguarde, alterando dados no sistema...</div>
+        </div>
+    </div>
+
+    <!-- Script modularizado -->
+    <script src="app.js"></script>
+</body>
+</html>
