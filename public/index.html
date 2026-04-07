@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="glass-container main-wrapper">
         <header>
@@ -32,6 +34,18 @@
             </div>
             <div class="action-group">
                 <button id="btn-fetch" class="btn-accent">🚀 Buscar Relatório</button>
+            </div>
+        </section>
+
+        <!-- Seção para Configuração do Cookie Opcional -->
+        <section class="controls glass-panel" style="margin-top: 15px;">
+            <div class="input-col" style="width: 100%;">
+                <label>Atualizar Sessão (Cole o Cookie bruto do seu navegador caso expire)</label>
+                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                    <input id="rawCookieInput" type="text" placeholder="culture=pt-BR; timezoneId=..."
+                        style="flex: 1; padding: 10px; border-radius: 4px; border: none; font-family: inherit;">
+                    <button id="btn-save-cookie" class="btn-primary" style="padding: 10px 15px;">Salvar Cookie</button>
+                </div>
             </div>
         </section>
 
@@ -70,7 +84,7 @@
         <div class="modal-box glass-panel">
             <h3 id="modal-title">🔨 Corrigir Apontamento</h3>
             <p>Ticket #<span id="modal-ticket"></span> | Ação <span id="modal-action"></span></p>
-            
+
             <div class="modal-inputs date-group">
                 <div class="input-col">
                     <label>Horário Inicial</label>
@@ -86,11 +100,13 @@
                 <button id="btn-cancelar" class="btn-cancel">Cancelar</button>
                 <button id="btn-salvar" class="btn-primary">Salvar no Movidesk</button>
             </div>
-            <div id="modal-loading" class="hidden" style="margin-top:10px; font-size:12px; color:#fff;">Aguarde, alterando dados no sistema...</div>
+            <div id="modal-loading" class="hidden" style="margin-top:10px; font-size:12px; color:#fff;">Aguarde,
+                alterando dados no sistema...</div>
         </div>
     </div>
 
     <!-- Script modularizado -->
     <script src="app.js"></script>
 </body>
+
 </html>

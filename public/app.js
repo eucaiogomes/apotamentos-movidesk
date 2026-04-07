@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("endDate").value = hje;
 
   document.getElementById("btn-fetch").addEventListener("click", buscarDados);
+  document.getElementById("btn-save-cookie").addEventListener("click", atualizarCookie);
 });
 
 function timeToMinutes(t) {
@@ -19,6 +20,31 @@ function minutesToHHMM(mins) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${h}h ${m}min`;
+}
+
+// Função para comunicar com a API do servidor e sobreescrever o cookie
+async function atualizarCookie() {
+  const cookieString = document.getElementById("rawCookieInput").value.trim();
+  if (!cookieString) {
+    alert("⚠️ Cole o texto bruto do cookie antes de salvar!");
+    return;
+  }
+
+  try {
+    const res = await fetch('http://localhost:3000/api/proxy/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookieString })
+    });
+    if (res.ok) {
+      alert("✅ Sessão do Movidesk configurada com sucesso! Você já pode realizar buscas ou correções.");
+      document.getElementById("rawCookieInput").value = "";
+    } else {
+      alert("❌ Falha ao tentar atualizar o cookie no servidor.");
+    }
+  } catch (e) {
+    alert("❌ Erro ao comunicar com o servidor Proxy local:\n" + e.message);
+  }
 }
 
 // Algoritmo de Análise Avançada
@@ -74,7 +100,7 @@ function analisarRegistros(registros) {
     // ❌ SOBREPOSIÇÃO
     if (atual.fimMin > prox.inicioMin) {
       problemas.push({
-        tipo: "sobreposicao", index: i, record: atual, 
+        tipo: "sobreposicao", index: i, record: atual,
         msg: `❌ Sobreposição: ${atual.inicio}-${atual.fim} conflita com ${prox.inicio}-${prox.fim}`
       });
     }
@@ -106,14 +132,14 @@ function analisarRegistros(registros) {
 async function buscarDados() {
   const startDate = document.getElementById("startDate").value;
   const endDate = document.getElementById("endDate").value;
-  
+
   toggleLoading(true);
 
   try {
     // Ping/Session keep-alive opcional rodando no fundo
-    fetch('http://localhost:3000/api/proxy/session', { 
-        method: 'POST'
-    }).catch(() => {});
+    fetch('http://localhost:3000/api/proxy/session', {
+      method: 'POST'
+    }).catch(() => { });
 
     // Busca dados via Proxy Local, burlando o CORS elegantemente (sem token via JSON pois está hardcoded)
     // Formata datas para o Movidesk (DD/MM/YYYY) se o servidor exigir, embora o proxy receba YYYY-MM-DD
@@ -128,10 +154,10 @@ async function buscarDados() {
       const message = errorJson.error || `HTTP ${res.status}`;
       throw new Error(`Falha no Proxy: ${message}`);
     }
-    
+
     const registros = await res.json();
     processarDados(registros);
-    
+
   } catch (e) {
     alert(`❌ Erro de comunicação:\n${e.message}`);
     console.error(e);
@@ -143,7 +169,7 @@ async function buscarDados() {
 function processarDados(payload) {
   // Extract real array format based on Movidesk API
   const registrosOriginais = Array.isArray(payload) ? payload : (payload.list || []);
-  
+
   // Transform real keys (periodStart/periodEnd) to what the algorithm expects (inicio/fim)
   const registros = registrosOriginais.map(r => ({
     inicio: r.periodStart || r.startTime || r.inicio,
@@ -173,9 +199,9 @@ function processarDados(payload) {
   const analise = analisarRegistros(registros);
   const cardProblemas = document.getElementById("problemas-card");
   const listaHtml = document.getElementById("lista-problemas");
-  
+
   listaHtml.innerHTML = "";
-  
+
   if (analise.problemas.length > 0 || analise.resumo.totalGapMin > 0) {
     cardProblemas.classList.remove("hidden");
     const summaryLi = document.createElement("li");
@@ -187,18 +213,18 @@ function processarDados(payload) {
     analise.problemas.forEach(p => {
       const li = document.createElement("li");
       li.innerText = p.msg;
-      
+
       if (p.record && p.record.ticketId && (p.record.actionNumber || p.record.actionNumber === 0)) {
-         const btn = document.createElement("button");
-         btn.innerHTML = "✏️ Ajustar";
-         btn.className = "btn-primary";
-         btn.style.padding = "4px 8px";
-         btn.style.marginLeft = "10px";
-         btn.style.fontSize = "0.75rem";
-         btn.onclick = () => abrirModalEditor(p.record);
-         li.appendChild(btn);
+        const btn = document.createElement("button");
+        btn.innerHTML = "✏️ Ajustar";
+        btn.className = "btn-primary";
+        btn.style.padding = "4px 8px";
+        btn.style.marginLeft = "10px";
+        btn.style.fontSize = "0.75rem";
+        btn.onclick = () => abrirModalEditor(p.record);
+        li.appendChild(btn);
       }
-      
+
       listaHtml.appendChild(li);
     });
   } else {
@@ -261,7 +287,7 @@ function abrirModalEditor(r) {
   document.getElementById("modal-action").innerText = r.actionNumber;
   document.getElementById("modal-inicio").value = r.inicio;
   document.getElementById("modal-fim").value = r.fim;
-  
+
   document.getElementById("edit-modal").classList.remove("hidden");
 }
 
@@ -295,8 +321,8 @@ document.getElementById("btn-salvar").addEventListener("click", async () => {
 
     // Localiza a linha de apontamento específico comparando a string de início original
     const targetApt = apts.find(a => {
-        const pStart = String(a.periodStart || a.PeriodStart || "");
-        return pStart.includes(targetRecord.inicio);
+      const pStart = String(a.periodStart || a.PeriodStart || "");
+      return pStart.includes(targetRecord.inicio);
     });
 
     if (!targetApt) throw new Error("A data/hora original não bate mais com a nuvem. Abra a página real para corrigir se necessário.");
@@ -304,7 +330,7 @@ document.getElementById("btn-salvar").addEventListener("click", async () => {
     // 3. Modifica apenas os tempos no object
     let oldFormatStart = targetApt.periodStart || targetApt.PeriodStart;
     let oldFormatEnd = targetApt.periodEnd || targetApt.PeriodEnd;
-    
+
     // Altera a parte 'HH:mm' conservando a Data e Segundos do formato T original do C#
     targetApt.PeriodStart = (oldFormatStart || "").replace(targetRecord.inicio, novoInicio);
     targetApt.PeriodEnd = (oldFormatEnd || "").replace(targetRecord.fim, novoFim);
@@ -333,19 +359,19 @@ document.getElementById("btn-salvar").addEventListener("click", async () => {
     });
 
     const saveResult = await rSave.json();
-    
+
     // Tenta parsear a resposta interna do Movidesk (que vem no campo 'data' vindo do proxy)
     let innerData = {};
-    try { innerData = JSON.parse(saveResult.data); } catch(e) {}
+    try { innerData = JSON.parse(saveResult.data); } catch (e) { }
 
     if (saveResult.status !== 200 || innerData.Success === false) {
       const errMsg = innerData.Message || "Erro desconhecido";
       throw new Error(`Movidesk recusou: ${errMsg}`);
     }
-    
+
     alert("✅ Apontamento ajustado brilhantemente no Movidesk!");
     document.getElementById("edit-modal").classList.add("hidden");
-    
+
     // Refresh Panel Automatically
     buscarDados();
   } catch (err) {
