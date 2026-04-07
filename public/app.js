@@ -327,13 +327,21 @@ document.getElementById("btn-salvar").addEventListener("click", async () => {
 
     if (!targetApt) throw new Error("A data/hora original não bate mais com a nuvem. Abra a página real para corrigir se necessário.");
 
-    // 3. Modifica apenas os tempos no object
+    // 3. O Movidesk exige receber a versão antiga marcada para deletar
+    // Fazemos um clone e adicionamos a regra ToDelete
+    const oldApt = JSON.parse(JSON.stringify(targetApt));
+    oldApt.ToDelete = true;
+    oldApt.toDelete = true;
+
+    // 4. Modifica os tempos no objeto que será mantido
     let oldFormatStart = targetApt.periodStart || targetApt.PeriodStart;
     let oldFormatEnd = targetApt.periodEnd || targetApt.PeriodEnd;
 
     // Altera a parte 'HH:mm' conservando a Data e Segundos do formato T original do C#
     targetApt.PeriodStart = (oldFormatStart || "").replace(targetRecord.inicio, novoInicio);
     targetApt.PeriodEnd = (oldFormatEnd || "").replace(targetRecord.fim, novoFim);
+    targetApt.ToDelete = false;
+    targetApt.toDelete = false;
 
     // Repara o WorkTime
     const dsEnd = new Date(targetApt.PeriodEnd);
@@ -344,7 +352,10 @@ document.getElementById("btn-salvar").addEventListener("click", async () => {
     targetApt.WorkTime = `${hh}:${mm}`;
     targetApt.WorkTimeConsumptionHoursTimeSpan = targetApt.WorkTime;
 
-    // 4. Envia para o NodeJS forjar o Form Post complexo
+    // Devolve a cópia velha na lista para ser enviada junto
+    apts.push(oldApt);
+
+    // 5. Envia para o NodeJS forjar o Form Post complexo
     const rSave = await fetch('/api/proxy/action/save', {
       method: "POST",
       headers: { "Content-Type": "application/json" },

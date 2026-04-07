@@ -60,7 +60,7 @@ app.post('/api/proxy/report', async (req, res) => {
   const sd = formatMD(startDate);
   const ed = formatMD(endDate);
 
-  const url = `https://lectortec.movidesk.com/Report/WorkTimeResultToJsonAsync?StartDate=${sd}&EndDate=${ed}&TicketType=&ShowOnlyWithServiceReport=false&Agents[0].Id=118387483&Agents[0].ToDelete=false`;
+  const url = `https://lectortec.movidesk.com/Report/WorkTimeResultToJsonAsync?StartDate=${sd}&EndDate=${ed}&TicketType=&ShowOnlyWithServiceReport=false`;
 
   try {
     console.log(`[PROXY] Chamando: ${url}`);
@@ -69,6 +69,7 @@ app.post('/api/proxy/report', async (req, res) => {
       method: 'GET',
       headers: {
         "accept": "application/json, text/plain, */*",
+        "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "authorization": `Bearer ${PRE_CONFIG.bearerToken}`,
         "cookie": PRE_CONFIG.cookieString,
         "sec-ch-ua": "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Google Chrome\";v=\"146\"",
@@ -166,7 +167,12 @@ app.post('/api/proxy/action/save', async (req, res) => {
     params.append('Id', actionId);
     params.append('Number', actionNumber);
     params.append('ActionType', actionType || '2'); // Agora pega do objeto original (Public/Internal)
-    params.append('Description', description || '');
+
+    // Codifica a descrição como Base64 + URI porque usamos a tag Encoded=true no Movidesk
+    const safeDesc = description || '';
+    const encodedDesc = Buffer.from(encodeURIComponent(safeDesc)).toString('base64');
+    params.append('Description', encodedDesc);
+
     params.append('ReopenTicket', 'false');
 
     // Estruturamos a Array maluca das horas no payload Form
